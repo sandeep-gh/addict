@@ -1,7 +1,38 @@
 import copy
+import traceback
 
 
-class Dict(dict):
+class dictW(dict):
+
+    def __init__(__self, *args, **kwargs):
+        super().__setattr__("__tracker", set())
+
+    def __getitem__tracker__(__self, item):
+
+        return super().__getitem__(item)
+
+    def __setitem__(__self, name, value):
+        super().__getattribute__("__tracker").add((name))
+        super().__setitem__(name, value)
+        pass
+
+    def get_changed_history(self, prefix=""):
+        for key, value in self.items():
+
+            if isinstance(value, type(self)):
+                yield from value.get_changed_history(prefix+"." + key)
+            else:
+                if key in super().__getattribute__("__tracker"):
+                    yield prefix + "." + key
+
+    def clear_changed_history(self):
+        for key, value in self.items():
+            if isinstance(value, type(self)):
+                value.clear_changed_history()
+        super().__getattribute__("__tracker").clear()
+
+
+class Dict(dictW):
 
     def __init__(__self, *args, **kwargs):
         object.__setattr__(__self, '__parent', kwargs.pop('__parent', None))
@@ -21,6 +52,7 @@ class Dict(dict):
 
         for key, val in kwargs.items():
             __self[key] = __self._hook(val)
+        super().__init__(__self, args, kwargs)
 
     def __setattr__(self, name, value):
         if hasattr(self.__class__, name):
@@ -33,7 +65,7 @@ class Dict(dict):
         isFrozen = (hasattr(self, '__frozen') and
                     object.__getattribute__(self, '__frozen'))
         if isFrozen and name not in super(Dict, self).keys():
-                raise KeyError(name)
+            raise KeyError(name)
         super(Dict, self).__setitem__(name, value)
         try:
             p = object.__getattribute__(self, '__parent')
@@ -64,7 +96,7 @@ class Dict(dict):
         return item
 
     def __getattr__(self, item):
-        return self.__getitem__(item)
+        return self.__getitem__tracker__(item)
 
     def __missing__(self, name):
         if object.__getattribute__(self, '__frozen'):
@@ -110,7 +142,7 @@ class Dict(dict):
         for k, v in other.items():
             if ((k not in self) or
                 (not isinstance(self[k], dict)) or
-                (not isinstance(v, dict))):
+                    (not isinstance(v, dict))):
                 self[k] = v
             else:
                 self[k].update(v)
