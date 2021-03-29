@@ -1,22 +1,26 @@
 import copy
-import traceback
 
 
 class dictW(dict):
 
-    def __init__(__self, *args, **kwargs):
-        super().__setattr__("__tracker", set())
+    def __init__(__self, args, kwargs):
+        super().__setattr__("__track_changes", False)
+        if "track_changes" in kwargs:
+            super(dict, __self).__setattr__("__tracker", set())
+            super().__setitem__("__track_changes", True)
 
     def __getitem__tracker__(__self, item):
-
         return super().__getitem__(item)
 
     def __setitem__(__self, name, value):
-        super().__getattribute__("__tracker").add((name))
+        if super().__getattribute__("__track_changes") == True:
+            super().__getattribute__("__tracker").add((name))
         super().__setitem__(name, value)
         pass
 
     def get_changed_history(self, prefix=""):
+        if super().__getattribute__("__track_changes") == False:
+            return
         for key, value in self.items():
 
             if isinstance(value, type(self)):
@@ -26,6 +30,8 @@ class dictW(dict):
                     yield prefix + "." + key
 
     def clear_changed_history(self):
+        if super().__getattribute__("__track_changes") == False:
+            return
         for key, value in self.items():
             if isinstance(value, type(self)):
                 value.clear_changed_history()
@@ -38,6 +44,7 @@ class Dict(dictW):
         object.__setattr__(__self, '__parent', kwargs.pop('__parent', None))
         object.__setattr__(__self, '__key', kwargs.pop('__key', None))
         object.__setattr__(__self, '__frozen', False)
+        super().__init__(args, kwargs)
         for arg in args:
             if not arg:
                 continue
@@ -52,7 +59,6 @@ class Dict(dictW):
 
         for key, val in kwargs.items():
             __self[key] = __self._hook(val)
-        super().__init__(__self, args, kwargs)
 
     def __setattr__(self, name, value):
         if hasattr(self.__class__, name):

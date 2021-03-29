@@ -2,6 +2,7 @@
 
 A modified addict to track changes to values of fields in addict. 
 
+Caution:Note: Not all tests are passing
 
 ## Usage:
 
