@@ -1,22 +1,27 @@
 import copy
 
+import traceback
+
 
 class dictW(dict):
 
     def __init__(__self, args, kwargs):
         super().__setattr__("__track_changes", False)
-        if "track_changes" in kwargs:
+        if "__track_changes" in kwargs:
             super(dict, __self).__setattr__("__tracker", set())
-            super().__setitem__("__track_changes", True)
-
-    def __getitem__tracker__(__self, item):
-        return super().__getitem__(item)
+            super().__setattr__("__track_changes", True)
 
     def __setitem__(__self, name, value):
-        if super().__getattribute__("__track_changes") == True:
+        if super(dict, __self).__getattribute__("__track_changes") == True:
             super().__getattribute__("__tracker").add((name))
         super().__setitem__(name, value)
         pass
+
+    def __missing__(__self, name):
+        if object.__getattribute__(__self, '__frozen'):
+            raise KeyError(name)
+
+        return Dict(__parent=__self, __key=name, __track_changes=super(dict, __self).__getattribute__("__track_changes"))
 
     def get_changed_history(self, prefix=""):
         if super().__getattribute__("__track_changes") == False:
@@ -30,7 +35,7 @@ class dictW(dict):
                     yield prefix + "." + key
 
     def clear_changed_history(self):
-        if super().__getattribute__("__track_changes") == False:
+        if super().__getitem__("__track_changes") == False:
             return
         for key, value in self.items():
             if isinstance(value, type(self)):
@@ -41,10 +46,13 @@ class dictW(dict):
 class Dict(dictW):
 
     def __init__(__self, *args, **kwargs):
+        if '__key' not in kwargs:
+            if 'track_changes' in kwargs.keys():
+                kwargs['__track_changes'] = kwargs.pop('track_changes')
         object.__setattr__(__self, '__parent', kwargs.pop('__parent', None))
         object.__setattr__(__self, '__key', kwargs.pop('__key', None))
         object.__setattr__(__self, '__frozen', False)
-        super().__init__(args, kwargs)
+
         for arg in args:
             if not arg:
                 continue
@@ -58,7 +66,10 @@ class Dict(dictW):
                     __self[key] = __self._hook(val)
 
         for key, val in kwargs.items():
-            __self[key] = __self._hook(val)
+            if key != '__track_changes':
+                __self[key] = __self._hook(val)
+
+        super().__init__(args, kwargs)
 
     def __setattr__(self, name, value):
         if hasattr(self.__class__, name):
@@ -102,12 +113,10 @@ class Dict(dictW):
         return item
 
     def __getattr__(self, item):
-        return self.__getitem__tracker__(item)
+        return self.__getitem__(item)
 
     def __missing__(self, name):
-        if object.__getattribute__(self, '__frozen'):
-            raise KeyError(name)
-        return self.__class__(__parent=self, __key=name)
+        return super().__missing__(name)
 
     def __delattr__(self, name):
         del self[name]
