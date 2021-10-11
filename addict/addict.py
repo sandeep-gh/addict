@@ -10,7 +10,6 @@ class Dict(dict):
                            kwargs.pop('track_changes', False))
         if object.__getattribute__(__self, '__track_changes'):
             object.__setattr__(__self, '__tracker', set())
-        print("init = ", args, kwargs)
         for arg in args:
             if not arg:
                 continue
@@ -27,7 +26,6 @@ class Dict(dict):
             __self[key] = __self._hook(val)
 
     def __setattr__(self, name, value):
-        print("setattr")
         if hasattr(self.__class__, name):
             raise AttributeError("'Dict' object attribute "
                                  "'{0}' is read-only".format(name))
@@ -35,7 +33,6 @@ class Dict(dict):
             self[name] = value
 
     def __setitem__(self, name, value):
-        print("setitem ", name, value)
         isFrozen = (hasattr(self, '__frozen') and
                     object.__getattribute__(self, '__frozen'))
         if isFrozen and name not in super(Dict, self).keys():
@@ -56,7 +53,6 @@ class Dict(dict):
             object.__delattr__(self, '__key')
 
     def __add__(self, other):
-        print("add")
         if not self.keys():
             return other
         else:
@@ -67,7 +63,6 @@ class Dict(dict):
 
     @classmethod
     def _hook(cls, item):
-        print("hook")
         if isinstance(item, dict):
             return cls(item)
         elif isinstance(item, (list, tuple)):
@@ -75,11 +70,9 @@ class Dict(dict):
         return item
 
     def __getattr__(self, item):
-        print("getattr ", item)
         return self.__getitem__(item)
 
     def __missing__(self, name):
-        print("missing")
         if object.__getattribute__(self, '__frozen'):
             raise KeyError(name)
         return self.__class__(__parent=self, __key=name, track_changes=object.__getattribute__(self, '__track_changes'))
@@ -107,7 +100,6 @@ class Dict(dict):
         return copy.deepcopy(self)
 
     def __deepcopy__(self, memo):
-        print("deepcopy")
         other = self.__class__()
         memo[id(self)] = other
         for key, value in self.items():
@@ -115,7 +107,6 @@ class Dict(dict):
         return other
 
     def update(self, *args, **kwargs):
-        print("update ", args, kwargs)
         other = {}
         if args:
             if len(args) > 1:
@@ -131,19 +122,15 @@ class Dict(dict):
                 self[k].update(v)
 
     def __getnewargs__(self):
-
-        print("getnewargs ", self.items())
         return tuple(self.items())
 
     def __getstate__(self):
         return self
 
     def __setstate__(self, state):
-        print("setstate called", state)
         self.update(state)
 
     def __or__(self, other):
-        print("or")
         if not isinstance(other, (Dict, dict)):
             return NotImplemented
         new = Dict(self)
@@ -151,7 +138,6 @@ class Dict(dict):
         return new
 
     def __ror__(self, other):
-        print("ror")
         if not isinstance(other, (Dict, dict)):
             return NotImplemented
         new = Dict(other)
@@ -159,7 +145,6 @@ class Dict(dict):
         return new
 
     def __ior__(self, other):
-        print("ior")
         self.update(other)
         return self
 
