@@ -1,58 +1,16 @@
 import copy
 
-import traceback
 
-
-class dictW(dict):
-
-    def __init__(__self, args, kwargs):
-        super().__setattr__("__track_changes", False)
-        if "__track_changes" in kwargs:
-            super(dict, __self).__setattr__("__tracker", set())
-            super().__setattr__("__track_changes", True)
-
-    def __setitem__(__self, name, value):
-        if super(dict, __self).__getattribute__("__track_changes") == True:
-            super().__getattribute__("__tracker").add((name))
-        super().__setitem__(name, value)
-        pass
-
-    def __missing__(__self, name):
-        if object.__getattribute__(__self, '__frozen'):
-            raise KeyError(name)
-
-        return Dict(__parent=__self, __key=name, __track_changes=super(dict, __self).__getattribute__("__track_changes"))
-
-    def get_changed_history(self, prefix=""):
-        if super().__getattribute__("__track_changes") == False:
-            return
-        for key, value in self.items():
-
-            if isinstance(value, type(self)):
-                yield from value.get_changed_history(prefix+"." + key)
-            else:
-                if key in super().__getattribute__("__tracker"):
-                    yield prefix + "." + key
-
-    def clear_changed_history(self):
-        if super().__getitem__("__track_changes") == False:
-            return
-        for key, value in self.items():
-            if isinstance(value, type(self)):
-                value.clear_changed_history()
-        super().__getattribute__("__tracker").clear()
-
-
-class Dict(dictW):
-
+class Dict(dict):
     def __init__(__self, *args, **kwargs):
-        if '__key' not in kwargs:
-            if 'track_changes' in kwargs.keys():
-                kwargs['__track_changes'] = kwargs.pop('track_changes')
         object.__setattr__(__self, '__parent', kwargs.pop('__parent', None))
         object.__setattr__(__self, '__key', kwargs.pop('__key', None))
         object.__setattr__(__self, '__frozen', False)
-
+        object.__setattr__(__self, '__track_changes',
+                           kwargs.pop('track_changes', False))
+        if object.__getattribute__(__self, '__track_changes'):
+            object.__setattr__(__self, '__tracker', set())
+        print("init = ", args, kwargs)
         for arg in args:
             if not arg:
                 continue
@@ -66,12 +24,10 @@ class Dict(dictW):
                     __self[key] = __self._hook(val)
 
         for key, val in kwargs.items():
-            if key != '__track_changes':
-                __self[key] = __self._hook(val)
-
-        super().__init__(args, kwargs)
+            __self[key] = __self._hook(val)
 
     def __setattr__(self, name, value):
+        print("setattr")
         if hasattr(self.__class__, name):
             raise AttributeError("'Dict' object attribute "
                                  "'{0}' is read-only".format(name))
@@ -79,10 +35,14 @@ class Dict(dictW):
             self[name] = value
 
     def __setitem__(self, name, value):
+        print("setitem ", name, value)
         isFrozen = (hasattr(self, '__frozen') and
                     object.__getattribute__(self, '__frozen'))
         if isFrozen and name not in super(Dict, self).keys():
             raise KeyError(name)
+
+        if object.__getattribute__(self, '__track_changes'):
+            object.__getattribute__(self, '__tracker').add((name))
         super(Dict, self).__setitem__(name, value)
         try:
             p = object.__getattribute__(self, '__parent')
@@ -96,6 +56,7 @@ class Dict(dictW):
             object.__delattr__(self, '__key')
 
     def __add__(self, other):
+        print("add")
         if not self.keys():
             return other
         else:
@@ -106,6 +67,7 @@ class Dict(dictW):
 
     @classmethod
     def _hook(cls, item):
+        print("hook")
         if isinstance(item, dict):
             return cls(item)
         elif isinstance(item, (list, tuple)):
@@ -113,10 +75,14 @@ class Dict(dictW):
         return item
 
     def __getattr__(self, item):
+        print("getattr ", item)
         return self.__getitem__(item)
 
     def __missing__(self, name):
-        return super().__missing__(name)
+        print("missing")
+        if object.__getattribute__(self, '__frozen'):
+            raise KeyError(name)
+        return self.__class__(__parent=self, __key=name, track_changes=object.__getattribute__(self, '__track_changes'))
 
     def __delattr__(self, name):
         del self[name]
@@ -141,6 +107,7 @@ class Dict(dictW):
         return copy.deepcopy(self)
 
     def __deepcopy__(self, memo):
+        print("deepcopy")
         other = self.__class__()
         memo[id(self)] = other
         for key, value in self.items():
@@ -148,6 +115,7 @@ class Dict(dictW):
         return other
 
     def update(self, *args, **kwargs):
+        print("update ", args, kwargs)
         other = {}
         if args:
             if len(args) > 1:
@@ -163,15 +131,19 @@ class Dict(dictW):
                 self[k].update(v)
 
     def __getnewargs__(self):
+
+        print("getnewargs ", self.items())
         return tuple(self.items())
 
     def __getstate__(self):
         return self
 
     def __setstate__(self, state):
+        print("setstate called", state)
         self.update(state)
 
     def __or__(self, other):
+        print("or")
         if not isinstance(other, (Dict, dict)):
             return NotImplemented
         new = Dict(self)
@@ -179,6 +151,7 @@ class Dict(dictW):
         return new
 
     def __ror__(self, other):
+        print("ror")
         if not isinstance(other, (Dict, dict)):
             return NotImplemented
         new = Dict(other)
@@ -186,6 +159,7 @@ class Dict(dictW):
         return new
 
     def __ior__(self, other):
+        print("ior")
         self.update(other)
         return self
 
@@ -204,3 +178,36 @@ class Dict(dictW):
 
     def unfreeze(self):
         self.freeze(False)
+
+    def get_changed_history(self, prefix=""):
+        if super().__getattribute__("__track_changes") == False:
+            return
+        for key, value in self.items():
+            if isinstance(value, type(self)):
+                yield from value.get_changed_history(prefix+"." + key)
+            else:
+                if key in super().__getattribute__("__tracker"):
+                    yield prefix + "." + key
+
+    def clear_changed_history(self):
+        if super().__getitem__("__track_changes") == False:
+            return
+        for key, value in self.items():
+            if isinstance(value, type(self)):
+                value.clear_changed_history()
+        super().__getattribute__("__tracker").clear()
+
+    def set_tracker(self, track_changes=False):
+        """
+        pickle/unpickle forgets about trackers and frozenness
+        """
+
+        for key, value in self.items():
+            if isinstance(value, type(self)):
+                value.set_tracker(self)
+        object.__setattr__(self, '__frozen',
+                           False)
+        object.__setattr__(self, '__track_changes',
+                           track_changes)
+        if track_changes:
+            object.__setattr__(self, '__tracker', set())
