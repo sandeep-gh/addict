@@ -169,10 +169,10 @@ class Dict(dict):
             return
         for key, value in self.items():
             if isinstance(value, type(self)):
-                yield from value.get_changed_history(prefix+"." + key)
+                yield from value.get_changed_history(prefix+"/" + key)
             else:
                 if key in super().__getattribute__("__tracker"):
-                    yield prefix + "." + key
+                    yield prefix + "/" + key
 
     def clear_changed_history(self):
         if super().__getitem__("__track_changes") == False:
