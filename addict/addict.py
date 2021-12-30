@@ -196,3 +196,11 @@ class Dict(dict):
                            track_changes)
         if track_changes:
             object.__setattr__(self, '__tracker', set())
+
+def walker(adict, ppath=""):
+    for key, value in adict.items():
+        if isinstance(value, Dict):
+            yield from walker(value, ppath + f"/{key}")
+        else:
+            yield (f"{ppath}/{key}", value)
+            pass

@@ -1,4 +1,4 @@
-from .addict import Dict
+from .addict import Dict, walker
 from .addict import Dict as Addict
 
 
