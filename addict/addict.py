@@ -179,7 +179,12 @@ class Dict(dict):
             return
         for key, value in self.items():
             if isinstance(value, type(self)):
-                value.clear_changed_history()
+                try:
+                    value.clear_changed_history()
+                except Exception as e:
+                    print("no tracker found for ", value, value.items())
+                    raise e
+
         super().__getattribute__("__tracker").clear()
 
     def set_tracker(self, track_changes=False):
@@ -196,6 +201,7 @@ class Dict(dict):
                            track_changes)
         if track_changes:
             object.__setattr__(self, '__tracker', set())
+
 
 def walker(adict, ppath=""):
     for key, value in adict.items():
