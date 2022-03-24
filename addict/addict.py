@@ -1,5 +1,21 @@
 import copy
 
+# don't want namedtuple to dictionified
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+def isnamedtupleinstance(x):
+    t = type(x)
+    b = t.__bases__
+    if len(b) != 1 or b[0] != tuple:
+        return False
+    f = getattr(t, '_fields', None)
+    if not isinstance(f, tuple):
+        return False
+    return all(type(n) == str for n in f)
+
 
 class Dict(dict):
     def __init__(__self, *args, **kwargs):
@@ -65,7 +81,7 @@ class Dict(dict):
     def _hook(cls, item):
         if isinstance(item, dict):
             return cls(item)
-        elif isinstance(item, (list, tuple)):
+        elif isinstance(item, (list, tuple)) and not isnamedtupleinstance(item):
             return type(item)(cls._hook(elem) for elem in item)
         return item
 
@@ -203,10 +219,19 @@ class Dict(dict):
             object.__setattr__(self, '__tracker', set())
 
 
-def walker(adict, ppath=""):
+def walker(adict, ppath="", guards=None):
+    logger.debug(f"in walker ppath = {ppath}")
     for key, value in adict.items():
-        if isinstance(value, Dict):
-            yield from walker(value, ppath + f"/{key}")
-        else:
-            yield (f"{ppath}/{key}", value)
-            pass
+        try:
+            if guards:
+                if key in guards:
+                    yield (f"{ppath}/{key}", value)
+                    continue  # stop at the guard
+            if isinstance(value, Dict):
+                yield from walker(value, ppath + f"/{key}", guards=guards)
+            else:
+                yield (f"{ppath}/{key}", value)
+                pass
+        except Exception as e:
+            print(f"in walker exception {ppath} {key} {e}")
+            raise ValueError
