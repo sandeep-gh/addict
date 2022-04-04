@@ -220,11 +220,10 @@ class Dict(dict):
 
 
 def walker(adict, ppath="", guards=None):
-    logger.debug(f"in walker ppath = {ppath}")
     for key, value in adict.items():
         try:
             if guards:
-                if key in guards:
+                if f"{ppath}/{key}" in guards:
                     yield (f"{ppath}/{key}", value)
                     continue  # stop at the guard
             if isinstance(value, Dict):
