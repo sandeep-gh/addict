@@ -17,6 +17,27 @@ def isnamedtupleinstance(x):
     return all(type(n) == str for n in f)
 
 
+def get_changed_history_list(arritems, tprefix=""):
+    for idx, aitem in enumerate(arritems):
+        if isinstance(aitem, Dict):
+            yield from aitem.get_changed_history(tprefix+f"/{idx}")
+        elif isinstance(aitem, list):
+            yield from get_changed_history_list(aitem, tprefix+f"/{idx}")
+        else:
+            # list are by default tracked for changes
+            yield tprefix + f"/{idx}"
+
+
+def clear_changed_history_list(arritems):
+    for idx, aitem in enumerate(arritems):
+        if isinstance(aitem, Dict):
+            aitem.clear_changed_history()
+        elif isinstance(aitem, list):
+            clear_changed_history_list(aitem)
+        else:
+            pass
+
+
 class Dict(dict):
     def __init__(__self, *args, **kwargs):
         object.__setattr__(__self, '__parent', kwargs.pop('__parent', None))
@@ -183,15 +204,24 @@ class Dict(dict):
     def get_changed_history(self, prefix=""):
         if super().__getattribute__("__track_changes") == False:
             return
+
         for key, value in self.items():
             if isinstance(value, type(self)):
-                yield from value.get_changed_history(prefix+"/" + key)
+                try:
+                    yield from value.get_changed_history(prefix+"/" + str(key))
+                except Exception as e:
+                    logger.debug(f"concat error {self.items} {self}")
+                    logger.debug(f"concat error {self}")
+                    raise e
+            elif isinstance(value, list):
+                yield from get_changed_history_list(value, prefix+"/" + str(key))
             else:
                 if key in super().__getattribute__("__tracker"):
                     yield prefix + "/" + key
 
     def clear_changed_history(self):
         if super().__getitem__("__track_changes") == False:
+            print("tracker not enabled")
             return
         for key, value in self.items():
             if isinstance(value, type(self)):
@@ -200,6 +230,8 @@ class Dict(dict):
                 except Exception as e:
                     print("no tracker found for ", value, value.items())
                     raise e
+            elif isinstance(value, list):
+                clear_changed_history_list(value)
 
         super().__getattribute__("__tracker").clear()
 
