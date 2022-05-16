@@ -17,12 +17,13 @@ def isnamedtupleinstance(x):
     return all(type(n) == str for n in f)
 
 
-def get_changed_history_list(arritems, tprefix=""):
+def get_changed_history_list(arritems, tprefix="", path_guards=None):
     for idx, aitem in enumerate(arritems):
         if isinstance(aitem, Dict):
-            yield from aitem.get_changed_history(tprefix+f"/{idx}")
+            yield from aitem.get_changed_history(tprefix+f"/{idx}", path_guards = path_guards
+                                                 )
         elif isinstance(aitem, list):
-            yield from get_changed_history_list(aitem, tprefix+f"/{idx}")
+            yield from get_changed_history_list(aitem, tprefix+f"/{idx}", path_guards = path_guards)
         else:
             # list are by default tracked for changes
             yield tprefix + f"/{idx}"
@@ -201,20 +202,21 @@ class Dict(dict):
     def unfreeze(self):
         self.freeze(False)
 
-    def get_changed_history(self, prefix=""):
+    def get_changed_history(self, prefix="", path_guards = None):
         if super().__getattribute__("__track_changes") == False:
             return
 
         for key, value in self.items():
             if isinstance(value, type(self)):
                 try:
-                    yield from value.get_changed_history(prefix+"/" + str(key))
+                    if not path_guards or prefix+"/" + str(key) not in path_guards:
+                        yield from value.get_changed_history(prefix+"/" + str(key), path_guards=path_guards)
                 except Exception as e:
                     logger.debug(f"concat error {self.items} {self}")
                     logger.debug(f"concat error {self}")
                     raise e
             elif isinstance(value, list):
-                yield from get_changed_history_list(value, prefix+"/" + str(key))
+                yield from get_changed_history_list(value, prefix+"/" + str(key), path_guards=path_guards)
             else:
                 if key in super().__getattribute__("__tracker"):
                     yield prefix + "/" + key
