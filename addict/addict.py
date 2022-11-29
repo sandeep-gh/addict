@@ -76,8 +76,16 @@ class Dict(dict):
         if isFrozen and name not in super(Dict, self).keys():
             raise KeyError(name)
 
-        if object.__getattribute__(self, '__track_changes'):
-            object.__getattribute__(self, '__tracker').add((name))
+        # import traceback
+        # import sys
+        # traceback.print_stack(file=sys.stdout)
+        # pickle.load calls setitem with out calling init 
+        try:
+            if object.__getattribute__(self, '__track_changes'):
+                object.__getattribute__(self, '__tracker').add((name))
+        except:
+            pass
+        
         super(Dict, self).__setitem__(name, value)
         try:
             p = object.__getattribute__(self, '__parent')

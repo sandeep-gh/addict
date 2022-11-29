@@ -32,3 +32,23 @@ outputs empty.
 
 1. Only tracks changes in values. Field additions and deletions are not being tracked. 
 2. Every field keeps a `__tracker` variable to keep track of all its members that have changed. 
+
+
+# TODO
+1. History not valid after
+pickle.load
+2. building dict from another dict
+following expression wont' work
+```python
+cjs_cfg = Dict(x, track_changes=True)
+```
+
+instead use
+```python 
+cjs_cfg = Dict(track_changes = True)
+with open("cjs_cfg.pickle", "rb") as fh:
+    x = pickle.load(fh)
+for _ in oj.dictWalker(x):
+    oj.dnew(cjs_cfg, _[0], _[1])
+
+```
